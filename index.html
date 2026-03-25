@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PathBank — 개인 문제은행</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d0f14;
+    --surface: #13161e;
+    --surface2: #1a1e28;
+    --surface3: #222738;
+    --border: #2a2f3d;
+    --border2: #363c50;
+    --text: #e8eaf0;
+    --text2: #9aa0b4;
+    --text3: #5a6075;
+    --accent: #5b7fff;
+    --accent2: #3d5ce8;
+    --accent-glow: rgba(91,127,255,0.15);
+    --green: #3ecf8e;
+    --green-bg: rgba(62,207,142,0.1);
+    --red: #ff6b6b;
+    --red-bg: rgba(255,107,107,0.1);
+    --amber: #f5a623;
+    --amber-bg: rgba(245,166,35,0.1);
+    --radius: 12px;
+    --radius-sm: 8px;
+    --shadow: 0 4px 24px rgba(0,0,0,0.4);
+  }
+
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; }
+  #root { height: 100%; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+  /* Layout */
+  .app { display: flex; height: 100vh; overflow: hidden; }
+
+  /* Sidebar */
+  .sidebar {
+    width: 220px; min-width: 220px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    padding: 24px 0;
+  }
+  .sidebar-logo {
+    padding: 0 20px 28px;
+    font-family: 'DM Serif Display', serif;
+    font-size: 22px; color: var(--text);
+    letter-spacing: -0.5px;
+  }
+  .sidebar-logo span { color: var(--accent); }
+  .sidebar-section { font-size: 10px; font-weight: 600; color: var(--text3); letter-spacing: 1.2px; text-transform: uppercase; padding: 0 20px 8px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 20px; cursor: pointer;
+    color: var(--text2); font-size: 14px; font-weight: 500;
+    border-left: 3px solid transparent;
+    transition: all 0.15s;
+  }
+  .nav-item:hover { color: var(--text); background: var(--surface2); }
+  .nav-item.active { color: var(--accent); border-left-color: var(--accent); background: var(--accent-glow); }
+  .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+  .sidebar-divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+  .sidebar-stats { padding: 16px 20px; margin-top: auto; }
+  .stat-row { display: flex; justify-content: space-between; font-size: 12px; color: var(--text2); margin-bottom: 6px; }
+  .stat-val { color: var(--text); font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+
+  /* Main */
+  .main { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
+
+  /* Header */
+  .header {
+    padding: 28px 36px 0;
+    display: flex; align-items: flex-start; justify-content: space-between;
+  }
+  .header-title { font-family: 'DM Serif Display', serif; font-size: 28px; color: var(--text); }
+  .header-sub { color: var(--text2); font-size: 14px; margin-top: 4px; }
+
+  /* Btn */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 9px 18px; border-radius: var(--radius-sm);
+    font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500;
+    cursor: pointer; border: none; transition: all 0.15s;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: var(--accent2); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(91,127,255,0.35); }
+  .btn-ghost { background: transparent; color: var(--text2); border: 1px solid var(--border2); }
+  .btn-ghost:hover { background: var(--surface2); color: var(--text); border-color: var(--border2); }
+  .btn-sm { padding: 6px 12px; font-size: 13px; }
+  .btn-danger { background: var(--red-bg); color: var(--red); border: 1px solid rgba(255,107,107,0.3); }
+  .btn-danger:hover { background: rgba(255,107,107,0.2); }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none !important; }
+
+  /* Card */
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 24px;
+  }
+
+  /* Form */
+  .form-group { margin-bottom: 20px; }
+  .form-label { display: block; font-size: 13px; font-weight: 500; color: var(--text2); margin-bottom: 8px; letter-spacing: 0.3px; }
+  .form-input, .form-textarea, .form-select {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); color: var(--text);
+    font-family: 'DM Sans', sans-serif; font-size: 14px;
+    padding: 10px 14px; outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .form-input:focus, .form-textarea:focus, .form-select:focus {
+    border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+  .form-textarea { resize: vertical; min-height: 80px; }
+  .form-select option { background: var(--surface2); }
+
+  /* Register page */
+  .register-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; padding: 28px 36px; }
+  .register-left { display: flex; flex-direction: column; gap: 20px; }
+  .register-right { display: flex; flex-direction: column; gap: 20px; }
+
+  /* Image upload */
+  .upload-area {
+    border: 2px dashed var(--border2); border-radius: var(--radius);
+    background: var(--surface2); min-height: 200px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    cursor: pointer; transition: all 0.2s; gap: 10px; position: relative; overflow: hidden;
+  }
+  .upload-area:hover { border-color: var(--accent); background: var(--accent-glow); }
+  .upload-area img { width: 100%; height: 200px; object-fit: contain; border-radius: calc(var(--radius) - 2px); }
+  .upload-icon { font-size: 32px; opacity: 0.5; }
+  .upload-text { color: var(--text2); font-size: 13px; }
+
+  /* Options */
+  .options-list { display: flex; flex-direction: column; gap: 10px; }
+  .option-row { display: flex; align-items: center; gap: 10px; }
+  .option-num {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--surface3); border: 1px solid var(--border2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 600; color: var(--text2); flex-shrink: 0;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .option-num.correct { background: var(--green-bg); border-color: var(--green); color: var(--green); }
+  .option-check { appearance: none; width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--border2); background: transparent; cursor: pointer; flex-shrink: 0; transition: all 0.15s; }
+  .option-check:checked { background: var(--green); border-color: var(--green); }
+  .option-input { flex: 1; }
+
+  /* Tag input */
+  .tag-wrap { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 10px; min-height: 42px; }
+  .tag-wrap:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+  .tag { background: var(--surface3); border: 1px solid var(--border2); border-radius: 20px; padding: 3px 10px; font-size: 12px; color: var(--text2); display: flex; align-items: center; gap: 5px; }
+  .tag-del { cursor: pointer; color: var(--text3); font-size: 14px; line-height: 1; }
+  .tag-del:hover { color: var(--red); }
+  .tag-input-bare { background: transparent; border: none; outline: none; color: var(--text); font-size: 14px; font-family: 'DM Sans', sans-serif; min-width: 80px; flex: 1; }
+
+  /* Question list */
+  .q-list { padding: 0 36px 36px; display: flex; flex-direction: column; gap: 12px; }
+  .q-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 18px 20px;
+    display: flex; align-items: flex-start; gap: 16px;
+    transition: border-color 0.15s;
+  }
+  .q-card:hover { border-color: var(--border2); }
+  .q-thumb { width: 64px; height: 64px; border-radius: var(--radius-sm); object-fit: cover; background: var(--surface2); flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: var(--text3); font-size: 22px; border: 1px solid var(--border); }
+  .q-thumb img { width: 100%; height: 100%; object-fit: cover; border-radius: var(--radius-sm); }
+  .q-info { flex: 1; min-width: 0; }
+  .q-text { font-size: 14px; color: var(--text); line-height: 1.5; margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .q-meta { display: flex; gap: 8px; flex-wrap: wrap; }
+  .badge { font-size: 11px; padding: 3px 8px; border-radius: 20px; font-weight: 500; font-family: 'JetBrains Mono', monospace; }
+  .badge-cat { background: rgba(91,127,255,0.12); color: var(--accent); }
+  .badge-bookmark { background: var(--amber-bg); color: var(--amber); }
+  .badge-wrong { background: var(--red-bg); color: var(--red); }
+  .badge-correct { background: var(--green-bg); color: var(--green); }
+  .q-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+  /* Quiz */
+  .quiz-wrap { padding: 28px 36px; max-width: 780px; margin: 0 auto; width: 100%; }
+  .quiz-progress { display: flex; align-items: center; gap: 14px; margin-bottom: 28px; }
+  .progress-bar { flex: 1; height: 4px; background: var(--surface3); border-radius: 2px; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.4s ease; }
+  .progress-text { font-size: 12px; color: var(--text2); font-family: 'JetBrains Mono', monospace; white-space: nowrap; }
+
+  .quiz-img-wrap { border-radius: var(--radius); overflow: hidden; background: var(--surface2); border: 1px solid var(--border); margin-bottom: 24px; max-height: 340px; display: flex; align-items: center; justify-content: center; }
+  .quiz-img-wrap img { width: 100%; max-height: 340px; object-fit: contain; }
+
+  .quiz-question { font-family: 'DM Serif Display', serif; font-size: 20px; line-height: 1.55; color: var(--text); margin-bottom: 24px; }
+
+  .quiz-options { display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; }
+  .quiz-option {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 18px; border-radius: var(--radius);
+    border: 1.5px solid var(--border);
+    background: var(--surface); cursor: pointer;
+    transition: all 0.15s; font-size: 14px; color: var(--text2);
+  }
+  .quiz-option:hover:not(.locked) { border-color: var(--accent); color: var(--text); background: var(--accent-glow); }
+  .quiz-option.selected { border-color: var(--accent); color: var(--text); background: var(--accent-glow); }
+  .quiz-option.correct { border-color: var(--green); background: var(--green-bg); color: var(--text); }
+  .quiz-option.wrong { border-color: var(--red); background: var(--red-bg); color: var(--text); }
+  .quiz-option.reveal-correct { border-color: var(--green); background: var(--green-bg); opacity: 0.7; }
+  .opt-num { width: 28px; height: 28px; border-radius: 50%; border: 1.5px solid currentColor; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0; font-family: 'JetBrains Mono', monospace; }
+
+  .quiz-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+  /* Result card */
+  .result-card { padding: 20px; border-radius: var(--radius); margin-top: 16px; }
+  .result-card.correct { background: var(--green-bg); border: 1px solid rgba(62,207,142,0.25); }
+  .result-card.wrong { background: var(--red-bg); border: 1px solid rgba(255,107,107,0.25); }
+  .result-header { display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 600; margin-bottom: 10px; }
+  .result-header.correct { color: var(--green); }
+  .result-header.wrong { color: var(--red); }
+  .explanation { font-size: 14px; color: var(--text2); line-height: 1.65; }
+
+  /* Filter bar */
+  .filter-bar { display: flex; gap: 10px; flex-wrap: wrap; padding: 16px 36px 0; }
+  .filter-chip {
+    padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 500; cursor: pointer;
+    border: 1px solid var(--border2); background: transparent; color: var(--text2);
+    transition: all 0.15s;
+  }
+  .filter-chip:hover { border-color: var(--accent); color: var(--accent); }
+  .filter-chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  /* Supabase setup */
+  .setup-wrap { padding: 40px 36px; max-width: 640px; }
+  .setup-step { display: flex; gap: 16px; margin-bottom: 28px; }
+  .step-num { width: 32px; height: 32px; border-radius: 50%; background: var(--accent-glow); border: 1.5px solid var(--accent); color: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; font-family: 'JetBrains Mono', monospace; }
+  .step-body h3 { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+  .step-body p { font-size: 13px; color: var(--text2); line-height: 1.6; }
+  .code-block { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 16px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #a8d8a8; margin-top: 10px; overflow-x: auto; white-space: pre; }
+  .link { color: var(--accent); text-decoration: none; }
+  .link:hover { text-decoration: underline; }
+
+  /* Toast */
+  .toast-wrap { position: fixed; bottom: 28px; right: 28px; display: flex; flex-direction: column; gap: 8px; z-index: 999; }
+  .toast { padding: 12px 18px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 500; animation: slideUp 0.25s ease; box-shadow: var(--shadow); }
+  .toast-success { background: var(--green-bg); border: 1px solid rgba(62,207,142,0.4); color: var(--green); }
+  .toast-error { background: var(--red-bg); border: 1px solid rgba(255,107,107,0.4); color: var(--red); }
+  @keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* Empty state */
+  .empty { text-align: center; padding: 64px 0; color: var(--text3); }
+  .empty-icon { font-size: 48px; margin-bottom: 14px; }
+  .empty p { font-size: 14px; }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    .register-grid { grid-template-columns: 1fr; }
+    .sidebar { width: 180px; min-width: 180px; }
+    .header, .filter-bar, .q-list, .quiz-wrap, .setup-wrap, .register-grid { padding-left: 20px; padding-right: 20px; }
+  }
+  @media (max-width: 640px) {
+    .app { flex-direction: column; }
+    .sidebar { width: 100%; min-width: unset; flex-direction: row; padding: 10px 0; overflow-x: auto; border-right: none; border-bottom: 1px solid var(--border); }
+    .sidebar-logo, .sidebar-section, .sidebar-divider, .sidebar-stats { display: none; }
+    .nav-item { border-left: none; border-bottom: 3px solid transparent; padding: 8px 14px; white-space: nowrap; }
+    .nav-item.active { border-left-color: transparent; border-bottom-color: var(--accent); }
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+// ──────────────────────────────────────────────
+// Supabase init (will be set after config)
+// ──────────────────────────────────────────────
+let supabase = null;
+function initSupabase(url, key) {
+  try {
+    supabase = window.supabase.createClient(url, key);
+  } catch(e) {
+    console.error('Supabase init error:', e);
+    supabase = null;
+  }
+}
+
+// ──────────────────────────────────────────────
+// LocalStorage fallback helpers
+// ──────────────────────────────────────────────
+const LS_KEY = 'pathbank_questions';
+const CONFIG_KEY = 'pathbank_config';
+
+function lsLoad() {
+  try { return JSON.parse(localStorage.getItem(LS_KEY) || '[]'); } catch { return []; }
+}
+function lsSave(data) {
+  localStorage.setItem(LS_KEY, JSON.stringify(data));
+}
+function loadConfig() {
+  try { return JSON.parse(localStorage.getItem(CONFIG_KEY) || 'null'); } catch { return null; }
+}
+function saveConfig(cfg) {
+  localStorage.setItem(CONFIG_KEY, JSON.stringify(cfg));
+}
+
+// ──────────────────────────────────────────────
+// Toast
+// ──────────────────────────────────────────────
+function useToast() {
+  const [toasts, setToasts] = useState([]);
+  const show = (msg, type='success') => {
+    const id = Date.now();
+    setToasts(t => [...t, {id, msg, type}]);
+    setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 3000);
+  };
+  return { toasts, show };
+}
+
+// ──────────────────────────────────────────────
+// App
+// ──────────────────────────────────────────────
+function App() {
+  const [page, setPage] = useState('loading'); // loading | setup | list | register | quiz
+  const [questions, setQuestions] = useState([]);
+  const [config, setConfig] = useState(null);
+  const { toasts, show: showToast } = useToast();
+  const [editTarget, setEditTarget] = useState(null);
+  const showToastRef = useRef(showToast);
+  useEffect(() => { showToastRef.current = showToast; }, [showToast]);
+
+  useEffect(() => {
+    try {
+      // ── 하드코딩된 Supabase 설정 ──
+      const SUPABASE_URL = 'https://jaqwyrwqarmceivgkfyy.supabase.co';
+      const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImphcXd5cndxYXJtY2VpdmdrZnl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0MTQ1ODAsImV4cCI6MjA4OTk5MDU4MH0.gP8bdhZ21uZ_510kHVuPLlSWOE0WEFAs_BFY5gV30Sw';
+      const cfg = { url: SUPABASE_URL, key: SUPABASE_KEY };
+      saveConfig(cfg);
+      setConfig(cfg);
+      initSupabase(cfg.url, cfg.key);
+      loadQuestions(setQuestions, showToastRef.current).then(() => setPage('list'));
+    } catch(e) {
+      setPage('list');
+    }
+  }, []);
+
+  const stats = {
+    total: questions.length,
+    bookmarked: questions.filter(q => q.bookmarked).length,
+    wrong: questions.filter(q => q.wrong).length,
+  };
+
+  const handleSaved = async (cfg) => {
+    setConfig(cfg);
+    if (cfg.url && cfg.key) {
+      initSupabase(cfg.url, cfg.key);
+      await loadQuestions(setQuestions, showToast);
+    }
+    setPage('list');
+  };
+
+  if (page === 'loading') {
+    return <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',background:'var(--bg)',color:'var(--text2)',fontSize:14}}>불러오는 중…</div>;
+  }
+
+  return (
+    <div className="app">
+      <Sidebar page={page} setPage={setPage} stats={stats} />
+      <div className="main">
+        {page === 'setup' && <SetupPage onSaved={handleSaved} showToast={showToast} />}
+        {page === 'list' && <ListPage questions={questions} setQuestions={setQuestions} showToast={showToast} setPage={setPage} setEditTarget={setEditTarget} />}
+        {page === 'register' && <RegisterPage questions={questions} setQuestions={setQuestions} showToast={showToast} setPage={setPage} editTarget={editTarget} setEditTarget={setEditTarget} />}
+        {page === 'quiz' && <QuizPage questions={questions} setQuestions={setQuestions} showToast={showToast} setPage={setPage} />}
+      </div>
+      <div className="toast-wrap">
+        {toasts.map(t => <div key={t.id} className={`toast toast-${t.type}`}>{t.msg}</div>)}
+      </div>
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────
+// Data layer
+// ──────────────────────────────────────────────
+async function loadQuestions(setQ, showToast) {
+  if (supabase) {
+    const { data, error } = await supabase.from('questions').select('*').order('created_at', { ascending: false });
+    if (error) { showToast('DB 로드 실패: ' + error.message, 'error'); setQ(lsLoad()); return; }
+    setQ(data || []);
+    lsSave(data || []);
+  } else {
+    setQ(lsLoad());
+  }
+}
+
+async function saveQuestion(q, isEdit, showToast, onDone) {
+  if (supabase) {
+    const payload = { question: q.question, options: q.options, answer: q.answer, explanation: q.explanation, category: q.category, tags: q.tags, image_url: q.image_url, bookmarked: q.bookmarked || false, wrong: q.wrong || false };
+    if (isEdit && q.id) {
+      const { error } = await supabase.from('questions').update(payload).eq('id', q.id);
+      if (error) { showToast('저장 실패: ' + error.message, 'error'); return; }
+    } else {
+      const { error } = await supabase.from('questions').insert([payload]);
+      if (error) { showToast('저장 실패: ' + error.message, 'error'); return; }
+    }
+    showToast('저장되었습니다 ✓');
+    onDone();
+  } else {
+    const all = lsLoad();
+    if (isEdit && q.id) {
+      const idx = all.findIndex(x => x.id === q.id);
+      if (idx !== -1) all[idx] = q;
+    } else {
+      all.unshift({ ...q, id: Date.now(), created_at: new Date().toISOString() });
+    }
+    lsSave(all);
+    showToast('로컬에 저장되었습니다 ✓');
+    onDone();
+  }
+}
+
+async function deleteQuestion(id, showToast, onDone) {
+  if (supabase) {
+    const { error } = await supabase.from('questions').delete().eq('id', id);
+    if (error) { showToast('삭제 실패', 'error'); return; }
+  } else {
+    lsSave(lsLoad().filter(x => x.id !== id));
+  }
+  showToast('삭제되었습니다');
+  onDone();
+}
+
+async function updateFlag(id, field, value, showToast) {
+  if (supabase) {
+    const { error } = await supabase.from('questions').update({ [field]: value }).eq('id', id);
+    if (error) { showToast('업데이트 실패', 'error'); return; }
+  } else {
+    const all = lsLoad();
+    const idx = all.findIndex(x => x.id === id);
+    if (idx !== -1) { all[idx][field] = value; lsSave(all); }
+  }
+}
+
+async function uploadImage(file, showToast) {
+  if (!supabase) {
+    // base64 fallback
+    return new Promise((res) => {
+      const r = new FileReader();
+      r.onload = (e) => res(e.target.result);
+      r.readAsDataURL(file);
+    });
+  }
+  const name = `${Date.now()}_${file.name.replace(/\s/g, '_')}`;
+  const { error } = await supabase.storage.from('question-images').upload(name, file);
+  if (error) { showToast('이미지 업로드 실패: ' + error.message, 'error'); return null; }
+  const { data } = supabase.storage.from('question-images').getPublicUrl(name);
+  return data.publicUrl;
+}
+
+// ──────────────────────────────────────────────
+// Sidebar
+// ──────────────────────────────────────────────
+function Sidebar({ page, setPage, stats }) {
+  return (
+    <div className="sidebar">
+      <div className="sidebar-logo">Path<span>Bank</span></div>
+      <div className="sidebar-section">메뉴</div>
+      {[
+        { id: 'list', icon: '⊞', label: '문제 목록' },
+        { id: 'register', icon: '＋', label: '문제 등록' },
+        { id: 'quiz', icon: '▶', label: '문제 풀기' },
+      ].map(n => (
+        <div key={n.id} className={`nav-item${page === n.id ? ' active' : ''}`} onClick={() => setPage(n.id)}>
+          <span className="nav-icon">{n.icon}</span>{n.label}
+        </div>
+      ))}
+      <hr className="sidebar-divider" />
+      <div className="sidebar-section">설정</div>
+      <div className={`nav-item${page === 'setup' ? ' active' : ''}`} onClick={() => setPage('setup')}>
+        <span className="nav-icon">⚙</span>Supabase 설정
+      </div>
+      <div className="sidebar-stats">
+        <div className="stat-row"><span>전체 문제</span><span className="stat-val">{stats.total}</span></div>
+        <div className="stat-row"><span>북마크</span><span className="stat-val">{stats.bookmarked}</span></div>
+        <div className="stat-row"><span>오답</span><span className="stat-val">{stats.wrong}</span></div>
+      </div>
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────
+// Setup Page
+// ──────────────────────────────────────────────
+function SetupPage({ onSaved, showToast }) {
+  const [url, setUrl] = useState('');
+  const [key, setKey] = useState('');
+  const SQL = `CREATE TABLE questions (
+  id bigint generated always as identity primary key,
+  created_at timestamptz default now(),
+  question text not null,
+  options jsonb not null,
+  answer int not null,
+  explanation text,
+  category text,
+  tags jsonb default '[]',
+  image_url text,
+  bookmarked boolean default false,
+  wrong boolean default false
+);
+
+-- Storage bucket (이름: question-images)
+-- Supabase > Storage > New bucket > question-images > Public`;
+
+  const handleSave = () => {
+    if (!url || !key) { showToast('URL과 키를 입력해주세요', 'error'); return; }
+    const cfg = { url: url.trim(), key: key.trim() };
+    saveConfig(cfg);
+    onSaved(cfg);
+    showToast('연결 설정이 저장되었습니다 ✓');
+  };
+
+  return (
+    <div className="setup-wrap">
+      <div className="header" style={{padding: 0, marginBottom: 32}}>
+        <div>
+          <div className="header-title">Supabase 설정</div>
+          <div className="header-sub">처음 한 번만 설정하면 됩니다</div>
+        </div>
+      </div>
+
+      <div className="setup-step">
+        <div className="step-num">1</div>
+        <div className="step-body">
+          <h3>Supabase 프로젝트 생성</h3>
+          <p><a href="https://supabase.com" target="_blank" className="link">supabase.com</a>에서 무료 계정 생성 → New Project 클릭 → 프로젝트 이름, DB 비밀번호 설정</p>
+        </div>
+      </div>
+
+      <div className="setup-step">
+        <div className="step-num">2</div>
+        <div className="step-body">
+          <h3>테이블 생성 (SQL Editor에 붙여넣기)</h3>
+          <p>Supabase 대시보드 → SQL Editor → New Query → 아래 SQL 실행</p>
+          <div className="code-block">{SQL}</div>
+        </div>
+      </div>
+
+      <div className="setup-step">
+        <div className="step-num">3</div>
+        <div className="step-body">
+          <h3>API 키 입력</h3>
+          <p>Project Settings → API → Project URL 과 anon public key 복사</p>
+        </div>
+      </div>
+
+      <div className="card" style={{marginTop: 8}}>
+        <div className="form-group">
+          <label className="form-label">Project URL</label>
+          <input className="form-input" placeholder="https://xxxx.supabase.co" value={url} onChange={e => setUrl(e.target.value)} />
+        </div>
+        <div className="form-group" style={{marginBottom: 0}}>
+          <label className="form-label">API 키 <span style={{color:'var(--text3)', fontWeight:400}}>(anon/public 또는 Publishable key)</span></label>
+          <input className="form-input" placeholder="eyJhbGci... 또는 sb_publishable_..." value={key} onChange={e => setKey(e.target.value)} />
+          <p style={{fontSize:12, color:'var(--text3)', marginTop:6}}>
+            Legacy 탭의 <strong style={{color:'var(--text2)'}}>anon public</strong> 키 또는 새 UI의 <strong style={{color:'var(--text2)'}}>Publishable key</strong> 중 하나를 복사하세요
+          </p>
+        </div>
+        <div style={{marginTop: 20}}>
+          <button className="btn btn-primary" onClick={handleSave}>연결 저장 →</button>
+          <button className="btn btn-ghost" style={{marginLeft: 10}} onClick={() => { saveConfig({url:'',key:''}); onSaved({url:'',key:''}); }}>
+            로컬 저장만 사용하기
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────
+// Register Page
+// ──────────────────────────────────────────────
+function RegisterPage({ questions, setQuestions, showToast, setPage, editTarget, setEditTarget }) {
+  const blank = { question: '', options: ['','','','',''], answer: 0, explanation: '', category: '', tags: [], image_url: '' };
+  const [form, setForm] = useState(editTarget || blank);
+  const [tagInput, setTagInput] = useState('');
+  const [saving, setSaving] = useState(false);
+  const fileRef = useRef();
+
+  useEffect(() => { if (editTarget) setForm(editTarget); }, [editTarget]);
+
+  const handleImage = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const url = await uploadImage(file, showToast);
+    if (url) setForm(f => ({ ...f, image_url: url }));
+  };
+
+  const handleImageFile = async (file) => {
+    if (!file || !file.type.startsWith('image/')) { showToast('이미지 파일만 가능해요', 'error'); return; }
+    const url = await uploadImage(file, showToast);
+    if (url) setForm(f => ({ ...f, image_url: url }));
+  };
+
+  // 붙여넣기 (Ctrl+V / Cmd+V)
+  useEffect(() => {
+    const handlePaste = (e) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          if (file) handleImageFile(file);
+          break;
+        }
+      }
+    };
+    window.addEventListener('paste', handlePaste);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, []);
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file) handleImageFile(file);
+  };
+
+  const setOpt = (i, val) => setForm(f => { const o = [...f.options]; o[i] = val; return { ...f, options: o }; });
+
+  const addTag = (e) => {
+    if ((e.key === 'Enter' || e.key === ',') && tagInput.trim()) {
+      e.preventDefault();
+      setForm(f => ({ ...f, tags: [...(f.tags || []), tagInput.trim()] }));
+      setTagInput('');
+    }
+  };
+  const removeTag = (i) => setForm(f => ({ ...f, tags: f.tags.filter((_,j) => j !== i) }));
+
+  const handleSave = async () => {
+    if (!form.question.trim()) { showToast('문제를 입력해주세요', 'error'); return; }
+    if (form.options.some(o => !o.trim())) { showToast('보기를 모두 입력해주세요', 'error'); return; }
+    setSaving(true);
+    await saveQuestion(form, !!editTarget, showToast, async () => {
+      await loadQuestions(setQuestions, showToast);
+      setEditTarget(null);
+      setForm(blank);
+      setPage('list');
+    });
+    setSaving(false);
+  };
+
+  return (
+    <>
+      <div className="header">
+        <div>
+          <div className="header-title">{editTarget ? '문제 수정' : '문제 등록'}</div>
+          <div className="header-sub">새로운 문제를 문제은행에 추가합니다</div>
+        </div>
+        <div style={{display:'flex', gap:10, marginTop:4}}>
+          <button className="btn btn-ghost btn-sm" onClick={() => { setEditTarget(null); setPage('list'); }}>취소</button>
+          <button className="btn btn-primary btn-sm" onClick={handleSave} disabled={saving}>{saving ? '저장 중…' : '저장하기'}</button>
+        </div>
+      </div>
+
+      <div className="register-grid">
+        <div className="register-left">
+          {/* Image */}
+          <div>
+            <label className="form-label">이미지 (선택)</label>
+            <div
+              className="upload-area"
+              onClick={() => fileRef.current.click()}
+              onDrop={handleDrop}
+              onDragOver={e => e.preventDefault()}
+              onDragEnter={e => e.preventDefault()}
+            >
+              {form.image_url
+                ? <img src={form.image_url} alt="preview" />
+                : <>
+                    <div className="upload-icon">🔬</div>
+                    <div className="upload-text">클릭하여 업로드</div>
+                    <div style={{fontSize:12, color:'var(--text3)', marginTop:4}}>또는 스크린샷 <kbd style={{background:'var(--surface3)',border:'1px solid var(--border2)',borderRadius:4,padding:'1px 5px',fontSize:11}}>Ctrl+V</kbd> / 드래그앤드롭</div>
+                  </>}
+            </div>
+            <input ref={fileRef} type="file" accept="image/*" style={{display:'none'}} onChange={handleImage} />
+            {form.image_url && <button className="btn btn-ghost btn-sm" style={{marginTop:8}} onClick={() => setForm(f=>({...f, image_url:''}))}>이미지 제거</button>}
+          </div>
+
+          {/* Question */}
+          <div className="form-group" style={{marginBottom:0}}>
+            <label className="form-label">문제</label>
+            <textarea className="form-textarea" style={{minHeight:100}} placeholder="문제를 입력하세요" value={form.question} onChange={e => setForm(f => ({...f, question: e.target.value}))} />
+          </div>
+
+          {/* Explanation */}
+          <div className="form-group" style={{marginBottom:0}}>
+            <label className="form-label">해설</label>
+            <textarea className="form-textarea" placeholder="해설을 입력하세요" value={form.explanation} onChange={e => setForm(f => ({...f, explanation: e.target.value}))} />
+          </div>
+        </div>
+
+        <div className="register-right">
+          {/* Options */}
+          <div>
+            <label className="form-label">보기 (정답에 ○ 체크)</label>
+            <div className="options-list">
+              {form.options.map((opt, i) => (
+                <div className="option-row" key={i}>
+                  <div className={`option-num${form.answer === i ? ' correct' : ''}`}>{i+1}</div>
+                  <input
+                    type="radio" name="answer" className="option-check"
+                    checked={form.answer === i} onChange={() => setForm(f => ({...f, answer: i}))}
+                  />
+                  <input className="form-input option-input" placeholder={`보기 ${i+1}`} value={opt} onChange={e => setOpt(i, e.target.value)} />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Category */}
+          <div>
+            <label className="form-label">카테고리</label>
+            <div style={{display:'flex', flexWrap:'wrap', gap:7}}>
+              {['GI','Thorax','Breast','GY','Endocrine','GU','M.kidney','PB','Liver','H/N','Lymphoma','CNS','B/ST','Molecular','Skin','PPH','Cytology','Forensic','Frozen'].map(cat => (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => setForm(f => ({...f, category: f.category === cat ? '' : cat}))}
+                  style={{
+                    padding:'5px 12px', borderRadius:20, fontSize:13, fontWeight:500,
+                    cursor:'pointer', border:'1.5px solid',
+                    transition:'all 0.15s',
+                    background: form.category === cat ? 'var(--accent)' : 'transparent',
+                    borderColor: form.category === cat ? 'var(--accent)' : 'var(--border2)',
+                    color: form.category === cat ? '#fff' : 'var(--text2)',
+                  }}
+                >{cat}</button>
+              ))}
+            </div>
+          </div>
+
+          {/* Tags */}
+          <div>
+            <label className="form-label">태그 (Enter로 추가)</label>
+            <div className="tag-wrap">
+              {(form.tags||[]).map((t,i) => (
+                <div className="tag" key={i}>{t}<span className="tag-del" onClick={() => removeTag(i)}>×</span></div>
+              ))}
+              <input className="tag-input-bare" placeholder="태그 입력…" value={tagInput} onChange={e => setTagInput(e.target.value)} onKeyDown={addTag} />
+            </div>
+          </div>
+
+          <button className="btn btn-primary" style={{marginTop:8}} onClick={handleSave} disabled={saving}>{saving ? '저장 중…' : '✓ 저장하기'}</button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ──────────────────────────────────────────────
+// List Page
+// ──────────────────────────────────────────────
+function ListPage({ questions, setQuestions, showToast, setPage, setEditTarget }) {
+  const [filter, setFilter] = useState('all');
+  const [search, setSearch] = useState('');
+
+  const cats = [...new Set(questions.map(q => q.category).filter(Boolean))];
+
+  const filtered = questions.filter(q => {
+    if (filter === 'bookmarked') return q.bookmarked;
+    if (filter === 'wrong') return q.wrong;
+    if (filter !== 'all') return q.category === filter;
+    return true;
+  }).filter(q => !search || q.question.includes(search) || (q.category||'').includes(search));
+
+  const handleDelete = async (id) => {
+    if (!confirm('삭제하시겠습니까?')) return;
+    await deleteQuestion(id, showToast, async () => {
+      await loadQuestions(setQuestions, showToast);
+    });
+  };
+
+  const handleEdit = (q) => { setEditTarget(q); setPage('register'); };
+
+  return (
+    <>
+      <div className="header">
+        <div>
+          <div className="header-title">문제 목록</div>
+          <div className="header-sub">총 {filtered.length}개 문제</div>
+        </div>
+        <div style={{display:'flex', gap:10, marginTop:4}}>
+          <input className="form-input" style={{width:200}} placeholder="검색…" value={search} onChange={e => setSearch(e.target.value)} />
+          <button className="btn btn-primary btn-sm" onClick={() => { setEditTarget(null); setPage('register'); }}>＋ 등록</button>
+        </div>
+      </div>
+
+      <div className="filter-bar">
+        {[['all','전체'], ['bookmarked','★ 북마크'], ['wrong','✕ 오답'], ...cats.map(c=>[c,c])].map(([val, label]) => (
+          <button key={val} className={`filter-chip${filter===val?' active':''}`} onClick={() => setFilter(val)}>{label}</button>
+        ))}
+      </div>
+
+      <div className="q-list" style={{marginTop:16}}>
+        {filtered.length === 0
+          ? <div className="empty"><div className="empty-icon">📭</div><p>문제가 없습니다. 문제를 등록해보세요!</p></div>
+          : filtered.map(q => (
+            <div className="q-card" key={q.id}>
+              <div className="q-thumb">
+                {q.image_url ? <img src={q.image_url} alt="" /> : '🔬'}
+              </div>
+              <div className="q-info">
+                <div className="q-text">{q.question}</div>
+                <div className="q-meta">
+                  {q.category && <span className="badge badge-cat">{q.category}</span>}
+                  {q.bookmarked && <span className="badge badge-bookmark">★ 북마크</span>}
+                  {q.wrong && <span className="badge badge-wrong">✕ 오답</span>}
+                  {(q.tags||[]).map((t,i) => <span key={i} className="badge" style={{background:'var(--surface3)', color:'var(--text2)'}}>{t}</span>)}
+                </div>
+              </div>
+              <div className="q-actions">
+                <button className="btn btn-ghost btn-sm" onClick={() => handleEdit(q)}>수정</button>
+                <button className="btn btn-danger btn-sm" onClick={() => handleDelete(q.id)}>삭제</button>
+              </div>
+            </div>
+          ))}
+      </div>
+    </>
+  );
+}
+
+// ──────────────────────────────────────────────
+// Quiz Page
+// ──────────────────────────────────────────────
+function QuizPage({ questions, setQuestions, showToast, setPage }) {
+  const [mode, setMode] = useState(null); // null | 'all' | 'bookmarked' | 'wrong' | cat
+  const [pool, setPool] = useState([]);
+  const [idx, setIdx] = useState(0);
+  const [selected, setSelected] = useState(null);
+  const [submitted, setSubmitted] = useState(false);
+  const [showExp, setShowExp] = useState(false);
+  const [score, setScore] = useState({ correct: 0, total: 0 });
+  const [done, setDone] = useState(false);
+
+  const cats = [...new Set(questions.map(q => q.category).filter(Boolean))];
+
+  const startQuiz = (m) => {
+    let qs = questions;
+    if (m === 'bookmarked') qs = questions.filter(q => q.bookmarked);
+    else if (m === 'wrong') qs = questions.filter(q => q.wrong);
+    else if (m !== 'all') qs = questions.filter(q => q.category === m);
+    if (qs.length === 0) { showToast('해당 조건의 문제가 없습니다', 'error'); return; }
+    // Shuffle
+    const shuffled = [...qs].sort(() => Math.random() - 0.5);
+    setPool(shuffled); setIdx(0); setSelected(null); setSubmitted(false); setShowExp(false);
+    setScore({ correct: 0, total: 0 }); setDone(false); setMode(m);
+  };
+
+  const q = pool[idx];
+
+  const handleSubmit = async () => {
+    if (selected === null) { showToast('보기를 선택해주세요', 'error'); return; }
+    const correct = selected === Number(q.answer);
+    setSubmitted(true);
+    const newScore = { correct: score.correct + (correct ? 1 : 0), total: score.total + 1 };
+    setScore(newScore);
+    if (!correct) {
+      const updated = questions.map(x => x.id === q.id ? { ...x, wrong: true } : x);
+      setQuestions(updated);
+      await updateFlag(q.id, 'wrong', true, showToast);
+      lsSave(updated);
+    }
+  };
+
+  const handleNext = () => {
+    if (idx + 1 >= pool.length) { setDone(true); return; }
+    setIdx(i => i+1); setSelected(null); setSubmitted(false); setShowExp(false);
+  };
+
+  const handleBookmark = async () => {
+    const newVal = !q.bookmarked;
+    const updated = questions.map(x => x.id === q.id ? { ...x, bookmarked: newVal } : x);
+    setQuestions(updated);
+    await updateFlag(q.id, 'bookmarked', newVal, showToast);
+    lsSave(updated);
+    showToast(newVal ? '★ 북마크에 추가됨' : '북마크 해제');
+    // update pool too
+    setPool(p => p.map(x => x.id === q.id ? { ...x, bookmarked: newVal } : x));
+  };
+
+  // Mode select screen
+  if (!mode) {
+    return (
+      <div className="quiz-wrap">
+        <div className="header-title" style={{fontFamily:'DM Serif Display, serif', fontSize:28, marginBottom:8}}>문제 풀기</div>
+        <div className="header-sub" style={{marginBottom:32}}>모드를 선택하세요</div>
+        <div style={{display:'flex', flexDirection:'column', gap:12, maxWidth:400}}>
+          {[
+            ['all', '⊞', '전체 랜덤', `${questions.length}문제`],
+            ['bookmarked', '★', '북마크 모음', `${questions.filter(q=>q.bookmarked).length}문제`],
+            ['wrong', '✕', '오답 노트', `${questions.filter(q=>q.wrong).length}문제`],
+            ...cats.map(c => [c, '◈', c, `${questions.filter(q=>q.category===c).length}문제`])
+          ].map(([m, icon, label, cnt]) => (
+            <button key={m} className="btn btn-ghost" style={{justifyContent:'space-between', padding:'16px 20px', fontSize:15}} onClick={() => startQuiz(m)}>
+              <span>{icon} {label}</span>
+              <span style={{color:'var(--text3)', fontFamily:'JetBrains Mono, monospace', fontSize:12}}>{cnt}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Done screen
+  if (done) {
+    const pct = Math.round(score.correct / score.total * 100);
+    return (
+      <div className="quiz-wrap">
+        <div style={{textAlign:'center', padding:'60px 0'}}>
+          <div style={{fontSize:56, marginBottom:16}}>{pct >= 80 ? '🎉' : pct >= 50 ? '📚' : '💪'}</div>
+          <div className="header-title" style={{fontFamily:'DM Serif Display, serif', marginBottom:8}}>풀이 완료!</div>
+          <div style={{fontFamily:'JetBrains Mono, monospace', fontSize:32, color:'var(--accent)', margin:'20px 0'}}>
+            {score.correct} / {score.total}
+          </div>
+          <div style={{color:'var(--text2)', marginBottom:32}}>정답률 {pct}%</div>
+          <div style={{display:'flex', gap:10, justifyContent:'center'}}>
+            <button className="btn btn-primary" onClick={() => startQuiz(mode)}>다시 풀기</button>
+            <button className="btn btn-ghost" onClick={() => setMode(null)}>모드 선택</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Quiz screen
+  return (
+    <div className="quiz-wrap">
+      <div className="quiz-progress">
+        <div className="progress-bar"><div className="progress-fill" style={{width: `${((idx+1)/pool.length)*100}%`}} /></div>
+        <div className="progress-text">{idx+1} / {pool.length}</div>
+        <div className="progress-text" style={{color:'var(--green)'}}>✓ {score.correct}</div>
+      </div>
+
+      {q.image_url && (
+        <div className="quiz-img-wrap">
+          <img src={q.image_url} alt="문제 이미지" />
+        </div>
+      )}
+
+      <div className="quiz-question">{q.question}</div>
+
+      <div className="quiz-options">
+        {q.options.map((opt, i) => {
+          let cls = 'quiz-option';
+          if (submitted) {
+            cls += ' locked';
+            if (i === Number(q.answer)) cls += ' correct';
+            else if (i === selected) cls += ' wrong';
+          } else if (selected === i) {
+            cls += ' selected';
+          }
+          return (
+            <div key={i} className={cls} onClick={() => !submitted && setSelected(i)}>
+              <div className="opt-num">{i+1}</div>
+              <span>{opt}</span>
+            </div>
+          );
+        })}
+      </div>
+
+      {submitted && (
+        <div className={`result-card ${selected === Number(q.answer) ? 'correct' : 'wrong'}`}>
+          <div className={`result-header ${selected === Number(q.answer) ? 'correct' : 'wrong'}`}>
+            {selected === Number(q.answer) ? '✓ 정답입니다!' : `✕ 오답 — 정답: ${Number(q.answer)+1}번`}
+          </div>
+          {q.explanation
+            ? <div className="explanation" style={{marginTop:10}}>
+                {q.explanation.split('\n').map((line, i) =>
+                  line.trim() === ''
+                    ? <div key={i} style={{height:8}} />
+                    : <p key={i} style={{margin:'0 0 4px'}}>{line}</p>
+                )}
+              </div>
+            : <div style={{fontSize:13, color:'var(--text3)', marginTop:8}}>등록된 해설이 없습니다</div>
+          }
+        </div>
+      )}
+
+      <div className="quiz-actions" style={{marginTop:20}}>
+        {!submitted
+          ? <button className="btn btn-primary" onClick={handleSubmit} disabled={selected===null}>제출하기</button>
+          : <button className="btn btn-primary" onClick={handleNext}>{idx+1 < pool.length ? '다음 문제 →' : '결과 보기'}</button>}
+        <button className="btn btn-ghost" onClick={handleBookmark} style={{color: q.bookmarked ? 'var(--amber)' : undefined}}>
+          {q.bookmarked ? '★ 북마크됨' : '☆ 북마크'}
+        </button>
+        <button className="btn btn-ghost" onClick={() => setMode(null)}>그만하기</button>
+      </div>
+    </div>
+  );
+}
+
+// Global error boundary
+class ErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { error: null }; }
+  static getDerivedStateFromError(e) { return { error: e }; }
+  render() {
+    if (this.state.error) {
+      return (
+        <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:'100vh',background:'var(--bg)',color:'var(--text)',padding:40,textAlign:'center'}}>
+          <div style={{fontSize:40,marginBottom:16}}>⚠️</div>
+          <div style={{fontSize:18,marginBottom:8,fontFamily:'DM Serif Display,serif'}}>앱 오류가 발생했어요</div>
+          <div style={{fontSize:13,color:'var(--text2)',marginBottom:24}}>{this.state.error.message}</div>
+          <button className="btn btn-primary" onClick={() => { localStorage.removeItem('pathbank_config'); window.location.reload(); }}>
+            설정 초기화 후 재시작
+          </button>
+          <p style={{fontSize:12,color:'var(--text3)',marginTop:12}}>※ 이 버튼을 누르면 Supabase 연결 설정만 지워지고 문제 데이터는 유지됩니다</p>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <ErrorBoundary><App /></ErrorBoundary>
+);
+</script>
+</body>
+</html>
